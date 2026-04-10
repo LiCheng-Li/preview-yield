@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SUPPORTED_CHAINS, DEFAULT_PREFERENCES } from '@/lib/constants';
+import { SUPPORTED_CHAINS, SUPPORTED_ASSETS, DEFAULT_PREFERENCES } from '@/lib/constants';
 import type { RiskLevel, Priority, UserPreferences } from '@/types/vault';
 
 interface Props {
@@ -9,13 +9,20 @@ interface Props {
   loading: boolean;
 }
 
+const CATEGORIES = [
+  { key: 'stablecoin', label: 'Stablecoins' },
+  { key: 'major', label: 'Major' },
+  { key: 'alt', label: 'Altcoins' },
+] as const;
+
 export default function PreferencePanel({ onSearch, loading }: Props) {
-  const [asset, setAsset] = useState<'USDC' | 'USDT'>(DEFAULT_PREFERENCES.asset);
+  const [asset, setAsset] = useState(DEFAULT_PREFERENCES.asset);
   const [amount, setAmount] = useState(DEFAULT_PREFERENCES.amount);
   const [risk, setRisk] = useState<RiskLevel>(DEFAULT_PREFERENCES.risk);
   const [chains, setChains] = useState<number[]>(DEFAULT_PREFERENCES.chains);
   const [priority, setPriority] = useState<Priority>(DEFAULT_PREFERENCES.priority);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [assetCategory, setAssetCategory] = useState<'stablecoin' | 'major' | 'alt'>('stablecoin');
 
   const toggleChain = (chainId: number) => {
     setChains((prev) =>
@@ -30,23 +37,45 @@ export default function PreferencePanel({ onSearch, loading }: Props) {
     onSearch({ asset, amount, risk, chains, priority });
   };
 
+  const assetsInCategory = SUPPORTED_ASSETS.filter((a) => a.category === assetCategory);
+
   return (
     <div className="w-full max-w-xl mx-auto space-y-6">
       {/* Asset selector */}
-      <div className="flex gap-2">
-        {(['USDC', 'USDT'] as const).map((a) => (
-          <button
-            key={a}
-            onClick={() => setAsset(a)}
-            className={`flex-1 py-2.5 rounded-lg font-medium transition-colors ${
-              asset === a
-                ? 'bg-emerald-500 text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            {a}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <label className="text-sm text-gray-400">Select Asset</label>
+        {/* Category tabs */}
+        <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.key}
+              onClick={() => setAssetCategory(cat.key)}
+              className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                assetCategory === cat.key
+                  ? 'bg-white/10 text-white'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        {/* Asset grid */}
+        <div className="flex flex-wrap gap-2">
+          {assetsInCategory.map((a) => (
+            <button
+              key={a.symbol}
+              onClick={() => setAsset(a.symbol)}
+              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                asset === a.symbol
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              <span className="font-medium">{a.symbol}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Amount input */}
@@ -70,7 +99,7 @@ export default function PreferencePanel({ onSearch, loading }: Props) {
         <label className="text-sm text-gray-400">Risk Tolerance</label>
         <div className="flex gap-2">
           {([
-            { value: 'low', label: 'Low', desc: 'Stablecoins, high TVL' },
+            { value: 'low', label: 'Low', desc: 'High TVL only' },
             { value: 'medium', label: 'Medium', desc: 'TVL > $1M' },
             { value: 'high', label: 'High', desc: 'All vaults' },
           ] as const).map((r) => (

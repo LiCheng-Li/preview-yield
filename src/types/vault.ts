@@ -129,7 +129,7 @@ export type RiskLevel = 'low' | 'medium' | 'high';
 export type Priority = 'fewest-steps' | 'lowest-cost' | 'best-yield';
 
 export interface UserPreferences {
-  asset: 'USDC' | 'USDT';
+  asset: string;
   amount: string;
   risk: RiskLevel;
   chains: number[];

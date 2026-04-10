@@ -1,4 +1,4 @@
-import { EARN_API_BASE, TVL_THRESHOLDS } from './constants';
+import { EARN_API_BASE, TVL_THRESHOLDS, STABLECOIN_SYMBOLS } from './constants';
 import type { Vault, VaultsResponse, RiskLevel } from '@/types/vault';
 
 export async function fetchAllVaults(chainId?: number): Promise<Vault[]> {
@@ -24,10 +24,13 @@ export async function fetchAllVaults(chainId?: number): Promise<Vault[]> {
 
 export function filterVaults(
   vaults: Vault[],
-  asset: 'USDC' | 'USDT',
+  asset: string,
   risk: RiskLevel,
   chains: number[],
 ): Vault[] {
+  const assetUpper = asset.toUpperCase();
+  const isStablecoin = STABLECOIN_SYMBOLS.some((s) => s.toUpperCase() === assetUpper);
+
   return vaults.filter((v) => {
     // Must be transactional
     if (!v.isTransactional) return false;
@@ -37,7 +40,7 @@ export function filterVaults(
 
     // Must have the target asset as underlying
     const hasAsset = v.underlyingTokens.some(
-      (t) => t.symbol.toUpperCase() === asset,
+      (t) => t.symbol.toUpperCase() === assetUpper,
     );
     if (!hasAsset) return false;
 
@@ -46,11 +49,11 @@ export function filterVaults(
     const tvlThreshold = TVL_THRESHOLDS[risk];
 
     if (risk === 'low') {
-      // Must have stablecoin tag AND high TVL
-      if (!v.tags.includes('stablecoin')) return false;
+      // For stablecoins: require stablecoin tag + high TVL
+      // For non-stablecoins: just require high TVL
+      if (isStablecoin && !v.tags.includes('stablecoin')) return false;
       if (tvl < tvlThreshold) return false;
     } else if (risk === 'medium') {
-      // No tag filter, but TVL threshold
       if (tvl < tvlThreshold) return false;
     }
     // high: no filters
