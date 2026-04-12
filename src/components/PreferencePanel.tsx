@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useAccount } from 'wagmi';
 import { SUPPORTED_CHAINS, SUPPORTED_ASSETS, DEFAULT_PREFERENCES } from '@/lib/constants';
+import { useTokenBalance } from '@/lib/useTokenBalance';
 import type { RiskLevel, Priority, UserPreferences } from '@/types/vault';
 
 interface Props {
@@ -23,6 +25,21 @@ export default function PreferencePanel({ onSearch, loading }: Props) {
   const [priority, setPriority] = useState<Priority>(DEFAULT_PREFERENCES.priority);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [assetCategory, setAssetCategory] = useState<'stablecoin' | 'major' | 'alt'>('stablecoin');
+
+  const { chainId } = useAccount();
+  const balance = useTokenBalance(asset);
+  const currentChainName = SUPPORTED_CHAINS.find((c) => c.chainId === chainId)?.name ?? 'Unknown chain';
+
+  const formatBalance = (v: string) => {
+    const n = parseFloat(v);
+    if (n === 0) return '0';
+    if (n < 0.0001) return '< 0.0001';
+    return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  };
+
+  const handleMax = () => {
+    if (balance.hasBalance) setAmount(balance.formatted);
+  };
 
   const toggleChain = (chainId: number) => {
     setChains((prev) =>
@@ -78,20 +95,48 @@ export default function PreferencePanel({ onSearch, loading }: Props) {
         </div>
       </div>
 
-      {/* Amount input */}
-      <div className="relative">
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount"
-          min="0"
-          step="any"
-          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-lg focus:outline-none focus:border-emerald-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-          {asset}
-        </span>
+      {/* Amount input + balance */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <label className="text-gray-400">Amount</label>
+          {balance.supported ? (
+            <button
+              onClick={handleMax}
+              disabled={!balance.hasBalance}
+              className="text-gray-400 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Balance:{' '}
+              <span className={balance.hasBalance ? 'text-emerald-400 underline' : ''}>
+                {balance.isLoading ? '...' : `${formatBalance(balance.formatted)} ${asset}`}
+              </span>
+              <span className="text-gray-600"> &middot; {currentChainName}</span>
+            </button>
+          ) : (
+            <span className="text-gray-600">Balance unavailable for this token/chain</span>
+          )}
+        </div>
+        <div className="relative">
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Enter amount"
+            min="0"
+            step="any"
+            className="w-full px-4 py-3 pr-28 bg-white/5 border border-white/10 rounded-lg text-lg focus:outline-none focus:border-emerald-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {balance.hasBalance && (
+              <button
+                onClick={handleMax}
+                className="px-2 py-1 text-xs font-medium bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded transition-colors"
+              >
+                MAX
+              </button>
+            )}
+            <span className="text-gray-500 font-medium pr-2">{asset}</span>
+          </div>
+        </div>
       </div>
 
       {/* Risk selector */}
