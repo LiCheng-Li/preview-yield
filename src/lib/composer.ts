@@ -23,7 +23,9 @@ export async function fetchQuote(
   const res = await fetch(`/api/quote?${params}`);
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Quote failed: ${res.status}`);
+    const msg = error.error || error.message || `Quote failed: ${res.status}`;
+    console.warn(`[Quote fail] ${vault.protocol.name} on ${vault.network}:`, msg);
+    throw new Error(msg);
   }
 
   return res.json();

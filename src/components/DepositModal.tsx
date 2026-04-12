@@ -14,7 +14,7 @@ type Status = 'confirm' | 'switching' | 'sending' | 'pending' | 'success' | 'err
 
 export default function DepositModal({ item, onClose }: Props) {
   const { vault, quote, totalCostUSD, stepCount, stepsDescription } = item;
-  const apy = vault.analytics.apy.total * 100;
+  const apy = vault.analytics.apy.total;
   const [status, setStatus] = useState<Status>('confirm');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

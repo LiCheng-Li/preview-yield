@@ -10,7 +10,7 @@ interface Props {
 
 export default function VaultCard({ item, rank, onDeposit }: Props) {
   const { vault, totalCostUSD, stepCount, stepsDescription, recommendationReason } = item;
-  const apy = vault.analytics.apy.total * 100;
+  const apy = vault.analytics.apy.total;
   const tvl = parseFloat(vault.analytics.tvl.usd);
   const isTop = rank === 1;
 

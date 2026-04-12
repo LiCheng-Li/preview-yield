@@ -9,7 +9,7 @@ export function buildExplainPrompt(
   const optionLines = options
     .map(
       (o, i) =>
-        `Option ${i + 1}: ${o.vault.protocol.name} on ${o.vault.network}, APY ${(o.vault.analytics.apy.total * 100).toFixed(2)}%, cost $${o.totalCostUSD.toFixed(2)}, ${o.stepCount} step(s) — "${o.stepsDescription}"`,
+        `Option ${i + 1}: ${o.vault.protocol.name} on ${o.vault.network}, APY ${o.vault.analytics.apy.total.toFixed(2)}%, cost $${o.totalCostUSD.toFixed(2)}, ${o.stepCount} step(s) — "${o.stepsDescription}"`,
     )
     .join('\n');
 

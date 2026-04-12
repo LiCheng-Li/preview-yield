@@ -13,7 +13,7 @@ import type { Vault, VaultWithQuote, UserPreferences, VaultsResponse } from '@/t
 import { EARN_API_BASE } from '@/lib/constants';
 
 export default function EarnPage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId: walletChainId } = useAccount();
   const [results, setResults] = useState<VaultWithQuote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function EarnPage() {
       const withQuotes: VaultWithQuote[] = await Promise.all(
         topCandidates.map(async (vault) => {
           try {
-            const quote = await fetchQuote(vault, address, prefs.amount);
+            const quote = await fetchQuote(vault, address, prefs.amount, walletChainId);
             const metrics = extractQuoteMetrics(quote);
             return {
               vault,
