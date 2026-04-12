@@ -47,7 +47,7 @@ export default function EarnPage() {
       setStatus(`Found ${allVaults.length} vaults, filtering...`);
       const filtered = filterVaults(allVaults, prefs.asset, prefs.risk, prefs.chains);
       const sorted = sortVaultsByAPY(filtered);
-      const topCandidates = sorted.slice(0, 10);
+      const topCandidates = sorted.slice(0, 20);
 
       if (topCandidates.length === 0) {
         setError('No vaults found matching your criteria. Try adjusting your filters.');
@@ -82,8 +82,17 @@ export default function EarnPage() {
         }),
       );
 
-      // Step 4: Sort by priority
-      const prioritySorted = sortByPriority(withQuotes, prefs.priority);
+      // Step 4: Drop unaffordable/unquotable options, then sort by priority
+      const affordable = withQuotes.filter((i) => i.quote !== null);
+      if (affordable.length === 0) {
+        setError(
+          'No affordable options found. Make sure your wallet has enough balance on a supported chain, or try a larger amount.',
+        );
+        setLoading(false);
+        setStatus('');
+        return;
+      }
+      const prioritySorted = sortByPriority(affordable, prefs.priority);
       const top3 = prioritySorted.slice(0, 3);
 
       // Show results immediately, then fetch AI explanations
@@ -209,10 +218,8 @@ export default function EarnPage() {
 }
 
 function sortByPriority(items: VaultWithQuote[], priority: string): VaultWithQuote[] {
-  const withQuotes = items.filter((i) => i.quote !== null);
-  const withoutQuotes = items.filter((i) => i.quote === null);
-
-  withQuotes.sort((a, b) => {
+  const sorted = [...items];
+  sorted.sort((a, b) => {
     switch (priority) {
       case 'fewest-steps':
         return a.stepCount - b.stepCount || b.vault.analytics.apy.total - a.vault.analytics.apy.total;
@@ -223,6 +230,5 @@ function sortByPriority(items: VaultWithQuote[], priority: string): VaultWithQuo
         return b.vault.analytics.apy.total - a.vault.analytics.apy.total;
     }
   });
-
-  return [...withQuotes, ...withoutQuotes];
+  return sorted;
 }
