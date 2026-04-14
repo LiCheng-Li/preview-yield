@@ -6,9 +6,10 @@ interface Props {
   item: VaultWithQuote;
   rank: number;
   onDeposit: (item: VaultWithQuote) => void;
+  costExceedsAmount?: boolean;
 }
 
-export default function VaultCard({ item, rank, onDeposit }: Props) {
+export default function VaultCard({ item, rank, onDeposit, costExceedsAmount }: Props) {
   const { vault, totalCostUSD, stepCount, stepsDescription, recommendationReason } = item;
   const apy = vault.analytics.apy.total;
   const tvl = parseFloat(vault.analytics.tvl.usd);
@@ -84,6 +85,13 @@ export default function VaultCard({ item, rank, onDeposit }: Props) {
             </span>
           ))}
         </div>
+      )}
+
+      {/* Cost-exceeds-amount warning */}
+      {costExceedsAmount && (
+        <p className="text-sm text-amber-400 mb-4 leading-relaxed border-l-2 border-amber-500/40 pl-3">
+          成本超過本金，不建議存入
+        </p>
       )}
 
       {/* AI Recommendation */}

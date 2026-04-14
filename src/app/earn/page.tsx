@@ -10,25 +10,27 @@ import { filterVaults, sortVaultsByAPY } from '@/lib/earn-api';
 import { fetchQuote, extractQuoteMetrics } from '@/lib/composer';
 import { fetchExplanations } from '@/lib/gemini';
 import type { Vault, VaultWithQuote, UserPreferences, VaultsResponse } from '@/types/vault';
-import { EARN_API_BASE } from '@/lib/constants';
+import { EARN_API_BASE, STABLECOIN_SYMBOLS } from '@/lib/constants';
 
 export default function EarnPage() {
   const { address, isConnected, chainId: walletChainId } = useAccount();
   const [results, setResults] = useState<VaultWithQuote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState('');
+  const [progress, setProgress] = useState(0);
   const [depositItem, setDepositItem] = useState<VaultWithQuote | null>(null);
+  const [searchedPrefs, setSearchedPrefs] = useState<UserPreferences | null>(null);
 
   const handleSearch = async (prefs: UserPreferences) => {
     if (!address) return;
     setLoading(true);
     setError(null);
     setResults([]);
+    setSearchedPrefs(prefs);
+    setProgress(5);
 
     try {
       // Step 1: Fetch all vaults (paginated)
-      setStatus('Fetching vaults...');
       const allVaults: Vault[] = [];
       let cursor: string | null = null;
 
@@ -42,22 +44,24 @@ export default function EarnPage() {
         allVaults.push(...data.data);
         cursor = data.nextCursor;
       } while (cursor);
+      setProgress(30);
 
       // Step 2: Filter and sort
-      setStatus(`Found ${allVaults.length} vaults, filtering...`);
       const filtered = filterVaults(allVaults, prefs.asset, prefs.risk, prefs.chains);
       const sorted = sortVaultsByAPY(filtered);
       const topCandidates = sorted.slice(0, 20);
+      setProgress(35);
 
       if (topCandidates.length === 0) {
         setError('No vaults found matching your criteria. Try adjusting your filters.');
         setLoading(false);
-        setStatus('');
+        setProgress(0);
         return;
       }
 
       // Step 3: Fetch quotes in parallel for top candidates
-      setStatus(`Getting quotes for ${topCandidates.length} vaults...`);
+      let quotesDone = 0;
+      const quoteSpan = 55;
       const withQuotes: VaultWithQuote[] = await Promise.all(
         topCandidates.map(async (vault) => {
           try {
@@ -78,6 +82,9 @@ export default function EarnPage() {
               stepCount: 0,
               stepsDescription: 'Quote unavailable',
             };
+          } finally {
+            quotesDone += 1;
+            setProgress(35 + Math.round((quotesDone / topCandidates.length) * quoteSpan));
           }
         }),
       );
@@ -89,7 +96,7 @@ export default function EarnPage() {
           'No affordable options found. Make sure your wallet has enough balance on a supported chain, or try a larger amount.',
         );
         setLoading(false);
-        setStatus('');
+        setProgress(0);
         return;
       }
       const prioritySorted = sortByPriority(affordable, prefs.priority);
@@ -97,7 +104,7 @@ export default function EarnPage() {
 
       // Show results immediately, then fetch AI explanations
       setResults(top3);
-      setStatus('Generating AI insights...');
+      setProgress(92);
 
       // Step 5: Fetch AI explanations
       try {
@@ -111,12 +118,12 @@ export default function EarnPage() {
         // AI explanations are optional, results still show
       }
 
-      setStatus('');
+      setProgress(100);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
-      setStatus('');
+      setTimeout(() => setProgress(0), 400);
     }
   };
 
@@ -155,11 +162,14 @@ export default function EarnPage() {
       {/* Preferences */}
       <PreferencePanel onSearch={handleSearch} loading={loading} />
 
-      {/* Status + Loading skeletons */}
-      {status && (
+      {/* Progress bar + Loading skeletons */}
+      {progress > 0 && (
         <div className="mt-8 space-y-4">
-          <div className="text-center text-sm text-gray-400 animate-pulse mb-4">
-            {status}
+          <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${progress}%` }}
+            />
           </div>
           {results.length === 0 && loading && (
             <div className="space-y-4">
@@ -195,14 +205,22 @@ export default function EarnPage() {
           <h2 className="text-lg font-semibold text-gray-300">
             Top {results.length} Options
           </h2>
-          {results.map((item, i) => (
-            <VaultCard
-              key={item.vault.address}
-              item={item}
-              rank={i + 1}
-              onDeposit={handleDeposit}
-            />
-          ))}
+          {results.map((item, i) => {
+            const isStable =
+              searchedPrefs != null && STABLECOIN_SYMBOLS.includes(searchedPrefs.asset);
+            const amountNum = searchedPrefs ? parseFloat(searchedPrefs.amount) : 0;
+            const costExceedsAmount =
+              isStable && amountNum > 0 && item.totalCostUSD > amountNum;
+            return (
+              <VaultCard
+                key={item.vault.address}
+                item={item}
+                rank={i + 1}
+                onDeposit={handleDeposit}
+                costExceedsAmount={costExceedsAmount}
+              />
+            );
+          })}
         </div>
       )}
 
